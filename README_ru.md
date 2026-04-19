@@ -72,7 +72,12 @@
 - Компонент `openthread` включён для совместимости с Matter; если не нужен, его можно отключить.
 - Детектирование Mute основано на подсчёте переключений светодиода за окно 800 мс – надёжно работает со стандартной частотой мигания ~2 Гц.
 
-## 📄 Лицензия
+### 📸 Screenshots
+
+![Dashboard](Screenshot.png)
+![Dashboard](In_bed_screenshot.png)
+
+## 📄 License
 
 MIT © 2026 [F-Lab]
-**Made with ❤️ by f1x6r**
+Made with ❤️ by f1x6r
