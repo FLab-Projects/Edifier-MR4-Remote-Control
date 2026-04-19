@@ -65,10 +65,12 @@ The full YAML configuration is available in [`edifier-mr4.yaml`](edifier-mr4.yam
 3. **Add the device** to Home Assistant – it will be auto‑discovered via the ESPHome integration.
 4. Control your MR4 monitors from HA dashboards, automations, or voice assistants!
 
+### 📸 Screenshots
+
+![Main](main.png)
+![Modes](modes.png)
+
 ## 📄 License
 
-MIT License – feel free to use and modify for your own projects.
-
----
-
-**Made with ❤️ by f1x6r**
+MIT © 2026 [F-Lab]
+Made with ❤️ by f1x6r
