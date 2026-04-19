@@ -1,0 +1,240 @@
+esphome:
+  name: edifier-mr4
+  friendly_name: Колонки
+  on_boot:
+    - priority: 600
+      then:
+        - output.turn_off: encoder_optocoupler
+    - priority: 200
+      then:
+        - lambda: |-
+            if (id(led_red_raw).state) id(target_mode) = 1;         // Red = Мониторинг
+            else if (id(led_green_raw).state) id(target_mode) = 2;  // Green = Музыка
+            else id(target_mode) = 0;
+        - component.update: amp_mode_select
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+# Home Assistant API
+api:
+  encryption:
+    key: "***"  # Ваш ключ API
+
+ota:
+  - platform: esphome
+    password: "***" # Ваш OTA пароль
+
+network:
+  enable_ipv6: true
+
+openthread:
+  device_type: FTD
+  tlv: !secret thread_tlv  # Ваш TLV ключ сети Thread
+
+globals:
+  - id: target_mode
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: mute_state
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: last_led_red_change
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+  - id: red_toggle_count
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: last_led_green_change
+    type: unsigned long
+    restore_value: no
+    initial_value: '0'
+  - id: green_toggle_count
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+substitutions:
+  monitoring_mode: GPIO19 # Красный
+  music_mode: GPIO18      # Зеленый
+  button_pin: GPIO20
+
+output:
+  - platform: gpio
+    pin: $button_pin
+    id: encoder_optocoupler
+
+binary_sensor:
+  - platform: gpio
+    pin: { number: $monitoring_mode, mode: INPUT_PULLUP, inverted: true }
+    id: led_red_raw
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            id(last_led_red_change) = millis();
+            id(red_toggle_count)++;
+    on_press:
+      then:
+        - lambda: |-
+            id(target_mode) = 1;
+            id(amp_mode_select).publish_state("Мониторинг");
+            id(amp_is_on).publish_state(true);
+  - platform: gpio
+    pin: { number: $music_mode, mode: INPUT_PULLUP, inverted: true }
+    id: led_green_raw
+    internal: true
+    on_state:
+      then:
+        - lambda: |-
+            id(last_led_green_change) = millis();
+            id(green_toggle_count)++;
+    on_press:
+      then:
+        - lambda: |-
+            id(target_mode) = 2;
+            id(amp_mode_select).publish_state("Музыка");
+            id(amp_is_on).publish_state(true);
+
+  - platform: template
+    id: amp_is_on
+    internal: true
+    lambda: 'return (id(led_red_raw).state || id(led_green_raw).state);'
+    filters:
+      - delayed_off: 2000ms
+    on_release:
+      then:
+        - lambda: |-
+            id(target_mode) = 0;
+            id(mute_state) = false;
+            id(amp_mode_select).publish_state("Выключено");
+
+switch:
+  - platform: template
+    name: "Колонки"
+    id: sw_power
+    icon: "mdi:speaker"
+    lambda: 'return id(target_mode) != 0;'
+    turn_on_action:
+      - if:
+          condition:
+            # Если уже горят какие-то диоды, просто обновляем статус, не нажимая кнопку
+            lambda: 'return !id(led_red_raw).state && !id(led_green_raw).state;'
+          then:
+            - output.turn_on: encoder_optocoupler
+            - delay: 150ms # Достаточно короткого клика для включения
+            - output.turn_off: encoder_optocoupler
+            - delay: 600ms
+            - lambda: |-
+                if(id(led_red_raw).state) id(target_mode) = 1;
+                else if(id(led_green_raw).state) id(target_mode) = 2;
+                else id(target_mode) = 1;
+            - component.update: amp_mode_select
+    turn_off_action:
+      - globals.set: { id: target_mode, value: '0' }
+      - globals.set: { id: mute_state, value: 'false' }
+      - component.update: amp_mode_select
+      - lambda: 'id(amp_is_on).publish_state(false);'
+      - output.turn_on: encoder_optocoupler
+      - delay: 2000ms
+      - output.turn_off: encoder_optocoupler
+
+  - platform: template
+    name: "Без звука"
+    id: sw_mute
+    icon: "mdi:volume-off"
+    lambda: 'return id(mute_state);'
+    turn_on_action:
+      - if:
+          condition:
+            lambda: 'return id(target_mode) != 0;' # БЛОКИРОВКА
+          then:
+            - globals.set: { id: mute_state, value: 'true' }
+            - output.turn_on: encoder_optocoupler
+            - delay: 150ms
+            - output.turn_off: encoder_optocoupler
+    turn_off_action:
+      - if:
+          condition:
+            lambda: 'return id(target_mode) != 0;' # БЛОКИРОВКА
+          then:
+            - globals.set: { id: mute_state, value: 'false' }
+            - output.turn_on: encoder_optocoupler
+            - delay: 150ms
+            - output.turn_off: encoder_optocoupler
+
+select:
+  - platform: template
+    name: "Режим"
+    id: amp_mode_select
+    icon: "mdi:tune"
+    options:
+      - "Выключено"
+      - "Мониторинг"
+      - "Музыка"
+    lambda: |-
+      if (id(target_mode) == 0) return std::string("Выключено");
+      if (id(target_mode) == 1) return std::string("Мониторинг");
+      if (id(target_mode) == 2) return std::string("Музыка");
+      return {};
+    set_action:
+      - if:
+          condition:
+            lambda: 'return x != "Выключено" && id(target_mode) != 0;'
+          then:
+            - lambda: |-
+                if (x == "Мониторинг") id(target_mode) = 1;
+                if (x == "Музыка") id(target_mode) = 2;
+            - component.update: amp_mode_select
+
+            # Двойной клик для смены режима
+            - output.turn_on: encoder_optocoupler
+            - delay: 100ms
+            - output.turn_off: encoder_optocoupler
+            - delay: 100ms
+            - output.turn_on: encoder_optocoupler
+            - delay: 100ms
+            - output.turn_off: encoder_optocoupler
+
+            - delay: 600ms # Ждем завершения переходных процессов
+
+            # Проверяем реальное состояние диодов напрямую
+            - if:
+                condition:
+                  lambda: 'return (id(target_mode) == 1 && !id(led_red_raw).state) || (id(target_mode) == 2 && !id(led_green_raw).state);'
+                then:
+                  - output.turn_on: encoder_optocoupler
+                  - delay: 100ms
+                  - output.turn_off: encoder_optocoupler
+                  - delay: 100ms
+                  - output.turn_on: encoder_optocoupler
+                  - delay: 100ms
+                  - output.turn_off: encoder_optocoupler
+                  - delay: 600ms
+          else:
+            - if:
+                condition: { lambda: 'return x == "Выключено";' }
+                then:
+                  - switch.turn_off: sw_power
+
+interval:
+  - interval: 200ms
+    then:
+      - lambda: |-
+          unsigned long now = millis();
+          // Сброс счётчиков каждые 800 мс
+          if (now - id(last_led_red_change) > 800) id(red_toggle_count) = 0;
+          if (now - id(last_led_green_change) > 800) id(green_toggle_count) = 0;
+
+          // Определяем, мигает ли красный
+          bool red_blinking = (id(red_toggle_count) > 2);
+          bool green_blinking = (id(green_toggle_count) > 2);
+
+          // Если мигает какой-либо из светодиодов — Mute активен
+          id(mute_state) = red_blinking || green_blinking;
