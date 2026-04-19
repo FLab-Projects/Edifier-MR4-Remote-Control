@@ -1,6 +1,7 @@
 # Умное управление колонками Edifier MR4 (ESPHome)
 
-[![ESPHome](https://img.shields.io/badge/ESPHome-2024.12+-blue.svg)](https://esphome.io)
+[![ESPHome](https://img.shields.io/badge/ESPHome-2024.6%2B-blue?logo=esphome)](https://esphome.io)
+[![Thread](https://img.shields.io/badge/Thread-FTD-0099FF?logo=thread)](https://openthread.io)
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-RISC--V-green.svg)](https://www.espressif.com)
 
 Внешнее устройство управления для студийных мониторов **Edifier MR4**, подключаемое к штатной кнопке энкодера **и** светодиодам индикации через оптопары. Устройство имитирует нажатия кнопки и считывает состояние светодиодов с полной гальванической развязкой. Позволяет интегрировать управление колонками в экосистему Home Assistant.
