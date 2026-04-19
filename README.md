@@ -1,6 +1,7 @@
 # Edifier MR4 Smart Controller (ESPHome)
 
-[![ESPHome](https://img.shields.io/badge/ESPHome-2024.12+-blue.svg)](https://esphome.io)
+[![ESPHome](https://img.shields.io/badge/ESPHome-2024.6%2B-blue?logo=esphome)](https://esphome.io)
+[![Thread](https://img.shields.io/badge/Thread-FTD-0099FF?logo=thread)](https://openthread.io)
 [![ESP32-C6](https://img.shields.io/badge/ESP32--C6-RISC--V-green.svg)](https://www.espressif.com)
 
 External control device for **Edifier MR4** studio monitors that connects to the stock encoder button **and** the status LEDs via optocouplers, simulating button presses and reading the LED states with full galvanic isolation. Enables seamless integration with Home Assistant.
